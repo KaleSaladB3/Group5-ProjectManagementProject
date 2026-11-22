@@ -1,19 +1,18 @@
 // Section A: General project info, team members, and risks
 import { useState } from "react";
-import useSavedState from "./useSavedState";
 import "./pages.css";
 
 export default function GeneralPage() {
   // Project info (FR-2)
-  const [description, setDescription] = useSavedState("description", "");
-  const [owner, setOwner] = useSavedState("owner", "");
+  const [description, setDescription] = useState("");
+  const [owner, setOwner] = useState("");
 
   // Team members (FR-3)
-  const [members, setMembers] = useSavedState("members", []);
+  const [members, setMembers] = useState([]);
   const [memberName, setMemberName] = useState("");
 
   // Risks (FR-4)
-  const [risks, setRisks] = useSavedState("risks", []);
+  const [risks, setRisks] = useState([]);
   const [riskText, setRiskText] = useState("");
   const [riskStatus, setRiskStatus] = useState("Open");
 
@@ -33,7 +32,7 @@ export default function GeneralPage() {
     setRiskText("");
   }
 
-  // Changes one field (text or status) of one risk
+  // Changes one field of one risk
   function updateRisk(index, field, value) {
     const updated = [...risks];
     updated[index] = { ...updated[index], [field]: value };
