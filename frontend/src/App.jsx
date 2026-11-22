@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import heroImg from "./assets/hero.png";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "./assets/vite.svg";
@@ -12,7 +12,7 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/api/health")
+      .get("/api/projects")
       .then((res) => setMessage(res.data))
       .catch((err) => setMessage("Backend not connected: " + err.message));
   }, []);
