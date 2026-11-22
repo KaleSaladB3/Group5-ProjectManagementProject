@@ -10,30 +10,77 @@ const PHASES = [
   "Project Management",
 ];
 
-// Sample requirements for the prototype 
-const REQUIREMENTS = ["Enter project info", "Enter requirements", "Track effort hours"];
+// Sample requirements for the prototype (later these will come from the backend)
+const requirements = [
+  { id: "FR-1", text: "Enter project info" },
+  { id: "FR-2", text: "Enter requirements" },
+  { id: "FR-3", text: "Log effort hours" },
+  { id: "NFR-1", text: "Pages load in under 2 seconds" },
+];
 
 export default function EffortTrackingPage() {
   const [entries, setEntries] = useState([]);
+
+  // Form fields (FR-7)
   const [date, setDate] = useState("");
-  const [requirement, setRequirement] = useState(REQUIREMENTS[0]);
+  const [requirementId, setRequirementId] = useState(requirements[0].id);
   const [phase, setPhase] = useState(PHASES[0]);
   const [hours, setHours] = useState("");
+  const [error, setError] = useState("");
 
   function addEntry() {
-    if (date === "" || hours === "") return;
-    setEntries([...entries, { date, requirement, phase, hours: Number(hours) }]);
+    // Data validation (NFR-3)
+    if (date === "" || hours === "") {
+      setError("Please fill in every field.");
+      return;
+    }
+    if (Number(hours) <= 0) {
+      setError("Hours must be more than 0.");
+      return;
+    }
+    setEntries([...entries, { date, requirementId, phase, hours: Number(hours) }]);
     setHours("");
+    setError("");
   }
 
-  // Adds up the hours for one requirement and one phase
-  function getTotal(req, ph) {
+  // Edit or delete hours already logged (FR-8)
+  function updateHours(index, newHours) {
+    if (Number(newHours) < 0) return;
+    const updated = [...entries];
+    updated[index] = { ...updated[index], hours: Number(newHours) };
+    setEntries(updated);
+  }
+
+  function deleteEntry(index) {
+    setEntries(entries.filter((_, i) => i !== index));
+  }
+
+  // Totals (FR-9)
+  function getTotal(reqId, ph) {
     let total = 0;
     for (const entry of entries) {
-      if (entry.requirement === req && entry.phase === ph) {
+      if (entry.requirementId === reqId && entry.phase === ph) {
         total += entry.hours;
       }
     }
+    return total;
+  }
+
+  function getRequirementTotal(reqId) {
+    let total = 0;
+    for (const ph of PHASES) total += getTotal(reqId, ph);
+    return total;
+  }
+
+  function getPhaseTotal(ph) {
+    let total = 0;
+    for (const req of requirements) total += getTotal(req.id, ph);
+    return total;
+  }
+
+  function getProjectTotal() {
+    let total = 0;
+    for (const req of requirements) total += getRequirementTotal(req.id);
     return total;
   }
 
@@ -45,9 +92,14 @@ export default function EffortTrackingPage() {
         <h2>Log Hours</h2>
         <div className="form-row">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          <select value={requirement} onChange={(e) => setRequirement(e.target.value)}>
-            {REQUIREMENTS.map((req) => (
-              <option key={req}>{req}</option>
+          <select
+            value={requirementId}
+            onChange={(e) => setRequirementId(e.target.value)}
+          >
+            {requirements.map((req) => (
+              <option key={req.id} value={req.id}>
+                {req.id}: {req.text}
+              </option>
             ))}
           </select>
           <select value={phase} onChange={(e) => setPhase(e.target.value)}>
@@ -57,12 +109,14 @@ export default function EffortTrackingPage() {
           </select>
           <input
             type="number"
+            min="0"
             placeholder="Hours"
             value={hours}
             onChange={(e) => setHours(e.target.value)}
           />
           <button onClick={addEntry}>Add Hours</button>
         </div>
+        {error && <p className="error">{error}</p>}
       </div>
 
       <div className="card">
@@ -75,17 +129,26 @@ export default function EffortTrackingPage() {
                 {PHASES.map((ph) => (
                   <th key={ph}>{ph}</th>
                 ))}
+                <th>Total</th>
               </tr>
             </thead>
             <tbody>
-              {REQUIREMENTS.map((req) => (
-                <tr key={req}>
-                  <td>{req}</td>
+              {requirements.map((req) => (
+                <tr key={req.id}>
+                  <td>{req.id}</td>
                   {PHASES.map((ph) => (
-                    <td key={ph}>{getTotal(req, ph)}</td>
+                    <td key={ph}>{getTotal(req.id, ph)}</td>
                   ))}
+                  <td className="total">{getRequirementTotal(req.id)}</td>
                 </tr>
               ))}
+              <tr className="total">
+                <td>Project Total</td>
+                {PHASES.map((ph) => (
+                  <td key={ph}>{getPhaseTotal(ph)}</td>
+                ))}
+                <td>{getProjectTotal()}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -93,14 +156,44 @@ export default function EffortTrackingPage() {
 
       <div className="card">
         <h2>Hours Log</h2>
-        {entries.length === 0 && <p className="empty">No hours logged yet.</p>}
-        <ul className="list">
-          {entries.map((entry, i) => (
-            <li key={i}>
-              {entry.date}: {entry.hours} hrs on {entry.phase} ({entry.requirement})
-            </li>
-          ))}
-        </ul>
+        {entries.length === 0 ? (
+          <p className="empty">No hours logged yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Requirement</th>
+                <th>Phase</th>
+                <th>Hours</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, i) => (
+                <tr key={i}>
+                  <td>{entry.date}</td>
+                  <td>{entry.requirementId}</td>
+                  <td>{entry.phase}</td>
+                  <td>
+                    <input
+                      type="number"
+                      min="0"
+                      className="hours-input"
+                      value={entry.hours}
+                      onChange={(e) => updateHours(i, e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <button className="delete-btn" onClick={() => deleteEntry(i)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
