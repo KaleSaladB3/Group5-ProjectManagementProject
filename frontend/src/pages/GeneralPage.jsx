@@ -13,6 +13,7 @@ export default function GeneralPage() {
 
   useEffect(() => {
     axios
+
       .get("/api/projects")
       .then((response) => {
         if (response.data.length > 0) {

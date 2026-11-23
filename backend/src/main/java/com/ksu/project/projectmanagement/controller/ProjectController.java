@@ -26,7 +26,7 @@ public class ProjectController {
 
     //Get a project by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Project> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<Project> getProjectById(@PathVariable("id") Long id) {
         return projectRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -39,7 +39,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Project> updateProject(@PathVariable Long id, @RequestBody Project updatedProject) {
+    public ResponseEntity<Project> updateProject(@PathVariable("id") Long id, @RequestBody Project updatedProject) {
         return projectRepository.findById(id)
                 .map(existing -> {
                     if (updatedProject.getName() != null && !updatedProject.getName().isBlank()) {
@@ -58,7 +58,7 @@ public class ProjectController {
 
     //delete a project
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id) {
         if (!projectRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
