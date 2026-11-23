@@ -1,5 +1,6 @@
 // Section A: General project info, team members, and risks
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import "./pages.css";
 
 export default function GeneralPage() {
@@ -7,6 +8,28 @@ export default function GeneralPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [owner, setOwner] = useState("");
+  const [projectId, setProjectId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("");
+
+  useEffect(() => {
+    axios
+      .get("/api/projects")
+      .then((response) => {
+        if (response.data.length > 0) {
+          const project = response.data[0];
+          setProjectId(project.id);
+          setName(project.name ?? "");
+          setDescription(project.description ?? "");
+          setOwner(project.ownerName ?? "");
+        }
+      })
+      .catch((error) => {
+        setSaveStatus(
+          "Could not load project: " +
+            (error.response?.data?.message || error.message)
+        );
+      });
+  }, []);
 
   // Team members (FR-3)
   const [members, setMembers] = useState([]);
@@ -44,6 +67,45 @@ export default function GeneralPage() {
     setRisks(risks.filter((_, i) => i !== index));
   }
 
+  async function saveProject() {
+    if (!name.trim()) {
+      setSaveStatus("Project name is required.");
+      return;
+    }
+    if (!owner.trim()) {
+      setSaveStatus("Owner / Project Manager is required.");
+      return;
+    }
+
+    const project = {
+      name: name.trim(),
+      description: description.trim(),
+      ownerName: owner.trim(),
+    };
+
+    try {
+      if (projectId) {
+        const response = await axios.put(
+          `/api/projects/${projectId}`,
+          project
+        );
+        setName(response.data.name);
+        setDescription(response.data.description ?? "");
+        setOwner(response.data.ownerName);
+        setSaveStatus("Project saved.");
+      } else {
+        const response = await axios.post("/api/projects", project);
+        setProjectId(response.data.id);
+        setSaveStatus("Project created.");
+      }
+    } catch (error) {
+      setSaveStatus(
+        "Could not save project: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
+  }
+
   return (
     <div className="page">
       <h1>Section A: General</h1>
@@ -66,6 +128,8 @@ export default function GeneralPage() {
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
+        <button onClick={saveProject}>Save Project</button>
+        {saveStatus && <p role="status">{saveStatus}</p>}
       </div>
 
       <div className="card">

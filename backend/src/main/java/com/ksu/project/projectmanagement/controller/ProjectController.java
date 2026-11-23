@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+
+
 @RestController
 @RequestMapping("api/projects")
 public class ProjectController {
@@ -34,6 +36,24 @@ public class ProjectController {
     @PostMapping
     public Project createProject(@RequestBody Project project){
         return projectRepository.save(project);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Project> updateProject(@PathVariable Long id, @RequestBody Project updatedProject) {
+        return projectRepository.findById(id)
+                .map(existing -> {
+                    if (updatedProject.getName() != null && !updatedProject.getName().isBlank()) {
+                        existing.setName(updatedProject.getName());
+                    }
+                    if (updatedProject.getDescription() != null) {
+                        existing.setDescription(updatedProject.getDescription());
+                    }
+                    if (updatedProject.getOwnerName() != null && !updatedProject.getOwnerName().isBlank()) {
+                        existing.setOwnerName(updatedProject.getOwnerName());
+                    }
+                    return ResponseEntity.ok(projectRepository.save(existing));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     //delete a project
