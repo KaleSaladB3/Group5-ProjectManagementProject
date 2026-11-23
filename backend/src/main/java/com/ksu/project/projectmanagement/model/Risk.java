@@ -15,7 +15,7 @@ public class Risk {
     private String description;
 
     @Column(nullable = false)
-    private String status; // "OPEN", "MITIGATED", "CLOSED"
+    private String status;
 
     @ManyToOne
     @JoinColumn(name = "project_id", nullable = false)

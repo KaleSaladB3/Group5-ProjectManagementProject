@@ -1,10 +1,8 @@
-// Section A: General project info, team members, and risks
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./pages.css";
 
 export default function GeneralPage() {
-  // Project info (FR-2)
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [owner, setOwner] = useState("");
@@ -32,11 +30,9 @@ export default function GeneralPage() {
       });
   }, []);
 
-  // Team members (FR-3)
   const [members, setMembers] = useState([]);
   const [memberName, setMemberName] = useState("");
 
-  // Risks (FR-4)
   const [risks, setRisks] = useState([]);
   const [riskText, setRiskText] = useState("");
   const [riskStatus, setRiskStatus] = useState("OPEN");

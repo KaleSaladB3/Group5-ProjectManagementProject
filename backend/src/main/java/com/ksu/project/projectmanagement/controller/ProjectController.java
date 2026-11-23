@@ -18,13 +18,11 @@ public class ProjectController {
         this.projectRepository = projectRepository;
     }
 
-    //Get all projects
     @GetMapping
     public List<Project> getAllProjects(){
         return projectRepository.findAll();
     }
 
-    //Get a project by ID
     @GetMapping("/{id}")
     public ResponseEntity<Project> getProjectById(@PathVariable("id") Long id) {
         return projectRepository.findById(id)
@@ -32,7 +30,6 @@ public class ProjectController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    //creates a project
     @PostMapping
     public Project createProject(@RequestBody Project project){
         return projectRepository.save(project);
@@ -56,7 +53,6 @@ public class ProjectController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    //delete a project
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id) {
         if (!projectRepository.existsById(id)) {

@@ -1,37 +1,62 @@
-// Section C: Log hours worked and see the totals
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import "./pages.css";
 
 const PHASES = [
-  "Requirements Analysis",
-  "Design",
-  "Coding",
-  "Testing",
-  "Project Management",
-];
-
-// Sample requirements for the prototype (later these will come from the backend)
-const requirements = [
-  { id: "FR-1", text: "Enter project info" },
-  { id: "FR-2", text: "Enter requirements" },
-  { id: "FR-3", text: "Log effort hours" },
-  { id: "NFR-1", text: "Pages load in under 2 seconds" },
+  { label: "Requirements Analysis", value: "REQUIREMENTS_ANALYSIS" },
+  { label: "Design", value: "DESIGNING" },
+  { label: "Coding", value: "CODING" },
+  { label: "Testing", value: "TESTING" },
+  { label: "Project Management", value: "PROJECT_MANAGEMENT" },
 ];
 
 export default function EffortTrackingPage() {
+  const [projectId, setProjectId] = useState(null);
+  const [requirements, setRequirements] = useState([]);
   const [entries, setEntries] = useState([]);
-
-  // Form fields (FR-7)
   const [period, setPeriod] = useState("Daily");
   const [date, setDate] = useState("");
-  const [requirementId, setRequirementId] = useState(requirements[0].id);
-  const [phase, setPhase] = useState(PHASES[0]);
+  const [requirementId, setRequirementId] = useState("");
+  const [phase, setPhase] = useState(PHASES[0].value);
   const [hours, setHours] = useState("");
   const [error, setError] = useState("");
 
-  function addEntry() {
-    // Data validation (NFR-3)
-    if (date === "" || hours === "") {
+  useEffect(() => {
+    axios
+      .get("/api/projects")
+      .then(async (response) => {
+        if (response.data.length === 0) return;
+        const id = response.data[0].id;
+        setProjectId(id);
+        const [requirementsResponse, effortResponse] = await Promise.all([
+          axios.get(`/api/projects/${id}/requirements`),
+          axios.get(`/api/projects/${id}/effort-logs`),
+        ]);
+        setRequirements(requirementsResponse.data);
+        setEntries(effortResponse.data.map((entry) => ({
+          id: entry.id,
+          date: entry.logDate,
+          period: entry.period === "WEEKLY" ? "Weekly" : "Daily",
+          requirementId: entry.requirementId,
+          requirementCode: entry.requirementCode,
+          phase: entry.phase,
+          hours: entry.hours,
+        })));
+        if (requirementsResponse.data.length > 0) {
+          setRequirementId(String(requirementsResponse.data[0].id));
+        }
+      })
+      .catch((loadError) => setError(
+        loadError.response?.data?.message || loadError.message
+      ));
+  }, []);
+
+  async function addEntry() {
+    if (!projectId) {
+      setError("Save a project in Section A before logging effort.");
+      return;
+    }
+    if (date === "" || hours === "" || requirementId === "") {
       setError("Please fill in every field.");
       return;
     }
@@ -44,51 +69,103 @@ export default function EffortTrackingPage() {
       setError(period + " hours can't be more than " + limit + ".");
       return;
     }
-    setEntries([...entries, { date, requirementId, phase, hours: Number(hours) }]);
-    setHours("");
-    setError("");
-  }
 
-  // Edit or delete hours already logged (FR-8)
-  function updateHours(index, newHours) {
-    const limit = entries[index].period === "Weekly" ? 168 : 24;
-    if (Number(newHours) < 0 || Number(newHours) > limit) return;
-    const updated = [...entries];
-    updated[index] = { ...updated[index], hours: Number(newHours) };
-    setEntries(updated);
-  }
-
-  function deleteEntry(index) {
-    setEntries(entries.filter((_, i) => i !== index));
-  }
-
-  // Totals (FR-9)
-  function getTotal(reqId, ph) {
-    let total = 0;
-    for (const entry of entries) {
-      if (entry.requirementId === reqId && entry.phase === ph) {
-        total += entry.hours;
-      }
+    try {
+      const response = await axios.post(
+        `/api/projects/${projectId}/effort-logs`,
+        {
+          logDate: date,
+          period: period.toUpperCase(),
+          phase,
+          hours: Number(hours),
+          requirementId: Number(requirementId),
+        }
+      );
+      setEntries((current) => [...current, {
+        id: response.data.id,
+        date: response.data.logDate,
+        period: response.data.period === "WEEKLY" ? "Weekly" : "Daily",
+        requirementId: response.data.requirementId,
+        requirementCode: response.data.requirementCode,
+        phase: response.data.phase,
+        hours: response.data.hours,
+      }]);
+      setHours("");
+      setError("");
+    } catch (saveError) {
+      setError(saveError.response?.data?.message || saveError.message);
     }
-    return total;
+  }
+
+  async function updateHours(index, newHours) {
+    const entry = entries[index];
+    const limit = entry.period === "Weekly" ? 168 : 24;
+    if (Number(newHours) < 0 || Number(newHours) > limit) return;
+
+    setEntries((current) => current.map((item, i) =>
+      i === index ? { ...item, hours: Number(newHours) } : item
+    ));
+    try {
+      await axios.put(
+        `/api/projects/${projectId}/effort-logs/${entry.id}`,
+        {
+          logDate: entry.date,
+          period: entry.period.toUpperCase(),
+          phase: entry.phase,
+          hours: Number(newHours),
+          requirementId: entry.requirementId,
+        }
+      );
+    } catch (saveError) {
+      setError(saveError.response?.data?.message || saveError.message);
+    }
+  }
+
+  async function deleteEntry(index) {
+    const entry = entries[index];
+    try {
+      await axios.delete(
+        `/api/projects/${projectId}/effort-logs/${entry.id}`
+      );
+      setEntries((current) => current.filter((_, i) => i !== index));
+    } catch (deleteError) {
+      setError(deleteError.response?.data?.message || deleteError.message);
+    }
+  }
+
+  function getTotal(reqId, phaseValue) {
+    return entries
+      .filter((entry) =>
+        entry.requirementId === reqId && entry.phase === phaseValue
+      )
+      .reduce((total, entry) => total + Number(entry.hours), 0);
   }
 
   function getRequirementTotal(reqId) {
-    let total = 0;
-    for (const ph of PHASES) total += getTotal(reqId, ph);
-    return total;
+    return PHASES.reduce(
+      (total, phaseOption) => total + getTotal(reqId, phaseOption.value),
+      0
+    );
   }
 
-  function getPhaseTotal(ph) {
-    let total = 0;
-    for (const req of requirements) total += getTotal(req.id, ph);
-    return total;
+  function getPhaseTotal(phaseValue) {
+    return requirements.reduce(
+      (total, requirement) =>
+        total + getTotal(requirement.id, phaseValue),
+      0
+    );
   }
 
   function getProjectTotal() {
-    let total = 0;
-    for (const req of requirements) total += getRequirementTotal(req.id);
-    return total;
+    return requirements.reduce(
+      (total, requirement) => total + getRequirementTotal(requirement.id),
+      0
+    );
+  }
+
+  function getPhaseLabel(phaseValue) {
+    return PHASES.find((phaseOption) => phaseOption.value === phaseValue)?.label
+      || phaseValue;
   }
 
   return (
@@ -109,13 +186,15 @@ export default function EffortTrackingPage() {
           >
             {requirements.map((req) => (
               <option key={req.id} value={req.id}>
-                {req.id}: {req.text}
+                {req.code}: {req.title}
               </option>
             ))}
           </select>
           <select value={phase} onChange={(e) => setPhase(e.target.value)}>
-            {PHASES.map((ph) => (
-              <option key={ph}>{ph}</option>
+            {PHASES.map((phaseOption) => (
+              <option key={phaseOption.value} value={phaseOption.value}>
+                {phaseOption.label}
+              </option>
             ))}
           </select>
           <input
@@ -137,8 +216,8 @@ export default function EffortTrackingPage() {
             <thead>
               <tr>
                 <th>Requirement</th>
-                {PHASES.map((ph) => (
-                  <th key={ph}>{ph}</th>
+                {PHASES.map((phaseOption) => (
+                  <th key={phaseOption.value}>{phaseOption.label}</th>
                 ))}
                 <th>Total</th>
               </tr>
@@ -146,17 +225,21 @@ export default function EffortTrackingPage() {
             <tbody>
               {requirements.map((req) => (
                 <tr key={req.id}>
-                  <td>{req.id}</td>
-                  {PHASES.map((ph) => (
-                    <td key={ph}>{getTotal(req.id, ph)}</td>
+                  <td>{req.code}</td>
+                  {PHASES.map((phaseOption) => (
+                    <td key={phaseOption.value}>
+                      {getTotal(req.id, phaseOption.value)}
+                    </td>
                   ))}
                   <td className="total">{getRequirementTotal(req.id)}</td>
                 </tr>
               ))}
               <tr className="total">
                 <td>Project Total</td>
-                {PHASES.map((ph) => (
-                  <td key={ph}>{getPhaseTotal(ph)}</td>
+                {PHASES.map((phaseOption) => (
+                  <td key={phaseOption.value}>
+                    {getPhaseTotal(phaseOption.value)}
+                  </td>
                 ))}
                 <td>{getProjectTotal()}</td>
               </tr>
@@ -183,11 +266,11 @@ export default function EffortTrackingPage() {
             </thead>
             <tbody>
               {entries.map((entry, i) => (
-                <tr key={i}>
+                <tr key={entry.id}>
                   <td>{entry.date}</td>
                   <td>{entry.period}</td>
-                  <td>{entry.requirementId}</td>
-                  <td>{entry.phase}</td>
+                  <td>{entry.requirementCode}</td>
+                  <td>{getPhaseLabel(entry.phase)}</td>
                   <td>
                     <input
                       type="number"

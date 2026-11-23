@@ -13,13 +13,16 @@ public class EffortLog {
     private Long id;
 
     @Column(nullable = false)
-    private LocalDate logDate; // Supports daily or weekly entries
+    private LocalDate logDate;
 
     @Column(nullable = false)
-    private String phase;// "REQUIREMENTS_ANALYSIS", "DESIGNING", "CODING", "TESTING", or "PROJECT_MANAGEMENT"
+    private String phase;
 
     @Column(nullable = false)
     private Double hours;
+
+    @Column(nullable = false)
+    private String period = "DAILY";
 
     @ManyToOne
     @JoinColumn(name = "requirement_id", nullable = false)

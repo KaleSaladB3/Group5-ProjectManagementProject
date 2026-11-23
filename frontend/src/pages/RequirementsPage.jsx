@@ -1,38 +1,99 @@
-// Section B: Functional and non-functional requirements
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import "./pages.css";
 
 export default function RequirementsPage() {
-  // Requirements list (FR-5)
   const [requirements, setRequirements] = useState([]);
   const [text, setText] = useState("");
   const [type, setType] = useState("Functional");
 
-  // Keeps count so every requirement gets a new ID (FR-6)
-  const [counts, setCounts] = useState({
-    Functional: 0,
-    "Non-Functional": 0,
-  });
+  const [projectId, setProjectId] = useState(null);
+  const [status, setStatus] = useState("");
 
-  function addRequirement() {
+  useEffect(() => {
+    axios
+      .get("/api/projects")
+      .then(async (response) => {
+        if (response.data.length === 0) return;
+        const id = response.data[0].id;
+        setProjectId(id);
+        const requirementsResponse = await axios.get(
+          `/api/projects/${id}/requirements`
+        );
+        setRequirements(requirementsResponse.data.map((requirement) => ({
+          id: requirement.id,
+          code: requirement.code,
+          type: requirement.type === "FUNCTIONAL"
+            ? "Functional"
+            : "Non-Functional",
+          text: requirement.title,
+        })));
+      })
+      .catch((error) => setStatus(error.response?.data?.message || error.message));
+  }, []);
+
+  async function addRequirement() {
     if (text.trim() === "") return;
-    const number = counts[type] + 1;
-    const prefix = type === "Functional" ? "FR" : "NFR";
-    const id = prefix + "-" + number;
-
-    setCounts({ ...counts, [type]: number });
-    setRequirements([...requirements, { id, type, text: text.trim() }]);
-    setText("");
+    if (!projectId) {
+      setStatus("Save a project in Section A before adding requirements.");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `/api/projects/${projectId}/requirements`,
+        {
+          title: text.trim(),
+          description: text.trim(),
+          type: type === "Functional" ? "FUNCTIONAL" : "NON_FUNCTIONAL",
+        }
+      );
+      const requirement = response.data;
+      setRequirements((current) => [...current, {
+        id: requirement.id,
+        code: requirement.code,
+        type: type,
+        text: requirement.title,
+      }]);
+      setText("");
+      setStatus("");
+    } catch (error) {
+      setStatus(error.response?.data?.message || error.message);
+    }
   }
 
-  function updateText(index, newText) {
-    const updated = [...requirements];
-    updated[index] = { ...updated[index], text: newText };
-    setRequirements(updated);
+  async function updateText(index, newText) {
+    const requirement = requirements[index];
+    setRequirements((current) => current.map((item, i) =>
+      i === index ? { ...item, text: newText } : item
+    ));
+    if (requirement.id) {
+      try {
+        await axios.put(
+          `/api/projects/${projectId}/requirements/${requirement.id}`,
+          {
+            title: newText,
+            description: newText,
+            type: requirement.type === "Functional"
+              ? "FUNCTIONAL"
+              : "NON_FUNCTIONAL",
+          }
+        );
+      } catch (error) {
+        setStatus(error.response?.data?.message || error.message);
+      }
+    }
   }
 
-  function deleteRequirement(index) {
-    setRequirements(requirements.filter((_, i) => i !== index));
+  async function deleteRequirement(index) {
+    const requirement = requirements[index];
+    try {
+      await axios.delete(
+        `/api/projects/${projectId}/requirements/${requirement.id}`
+      );
+      setRequirements((current) => current.filter((_, i) => i !== index));
+    } catch (error) {
+      setStatus(error.response?.data?.message || error.message);
+    }
   }
 
   return (
@@ -53,6 +114,7 @@ export default function RequirementsPage() {
           />
           <button onClick={addRequirement}>Add Requirement</button>
         </div>
+        {status && <p className="error">{status}</p>}
       </div>
 
       <div className="card">
@@ -72,7 +134,7 @@ export default function RequirementsPage() {
             <tbody>
               {requirements.map((req, i) => (
                 <tr key={req.id}>
-                  <td>{req.id}</td>
+                  <td>{req.code}</td>
                   <td>{req.type}</td>
                   <td>
                     <input
