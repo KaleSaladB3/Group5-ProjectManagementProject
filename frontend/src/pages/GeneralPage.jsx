@@ -4,6 +4,7 @@ import "./pages.css";
 
 export default function GeneralPage() {
   // Project info (FR-2)
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [owner, setOwner] = useState("");
 
@@ -49,6 +50,10 @@ export default function GeneralPage() {
 
       <div className="card">
         <h2>Project Info</h2>
+        <label className="field">
+          Project Name
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
         <label className="field">
           Owner / Project Manager
           <input value={owner} onChange={(e) => setOwner(e.target.value)} />
