@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
+
+
 @RestController
 @RequestMapping("api/projects")
 public class ProjectController {
@@ -24,7 +26,7 @@ public class ProjectController {
 
     //Get a project by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Project> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<Project> getProjectById(@PathVariable("id") Long id) {
         return projectRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -36,9 +38,27 @@ public class ProjectController {
         return projectRepository.save(project);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Project> updateProject(@PathVariable("id") Long id, @RequestBody Project updatedProject) {
+        return projectRepository.findById(id)
+                .map(existing -> {
+                    if (updatedProject.getName() != null && !updatedProject.getName().isBlank()) {
+                        existing.setName(updatedProject.getName());
+                    }
+                    if (updatedProject.getDescription() != null) {
+                        existing.setDescription(updatedProject.getDescription());
+                    }
+                    if (updatedProject.getOwnerName() != null && !updatedProject.getOwnerName().isBlank()) {
+                        existing.setOwnerName(updatedProject.getOwnerName());
+                    }
+                    return ResponseEntity.ok(projectRepository.save(existing));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     //delete a project
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id) {
         if (!projectRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
