@@ -22,7 +22,7 @@ public class RiskController {
 
     @GetMapping
     public ResponseEntity<List<RiskResponse>> getRisks(
-            @PathVariable Long projectId
+            @PathVariable("projectId") Long projectId
     ) {
         return ResponseEntity.ok(
                 riskService.getRisks(projectId)
@@ -31,7 +31,7 @@ public class RiskController {
 
     @PostMapping
     public ResponseEntity<RiskResponse> addRisk(
-            @PathVariable Long projectId,
+            @PathVariable("projectId") Long projectId,
             @RequestBody RiskRequest request
     ) {
         RiskResponse createdRisk =
@@ -44,8 +44,8 @@ public class RiskController {
 
     @PutMapping("/{riskId}")
     public ResponseEntity<RiskResponse> editRisk(
-            @PathVariable Long projectId,
-            @PathVariable Long riskId,
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("riskId") Long riskId,
             @RequestBody RiskRequest request
     ) {
         return ResponseEntity.ok(
@@ -55,8 +55,8 @@ public class RiskController {
 
     @PatchMapping("/{riskId}/status")
     public ResponseEntity<RiskResponse> updateRiskStatus(
-            @PathVariable Long projectId,
-            @PathVariable Long riskId,
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("riskId") Long riskId,
             @RequestBody RiskStatusUpdateRequest request
     ) {
         return ResponseEntity.ok(
@@ -70,8 +70,8 @@ public class RiskController {
 
     @DeleteMapping("/{riskId}")
     public ResponseEntity<Void> deleteRisk(
-            @PathVariable Long projectId,
-            @PathVariable Long riskId
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("riskId") Long riskId
     ) {
         riskService.deleteRisk(projectId, riskId);
 

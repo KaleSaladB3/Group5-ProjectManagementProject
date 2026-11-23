@@ -39,33 +39,145 @@ export default function GeneralPage() {
   // Risks (FR-4)
   const [risks, setRisks] = useState([]);
   const [riskText, setRiskText] = useState("");
-  const [riskStatus, setRiskStatus] = useState("Open");
+  const [riskStatus, setRiskStatus] = useState("OPEN");
 
-  function addMember() {
+  useEffect(() => {
+    if (!projectId) return;
+
+    axios
+      .get(`/api/projects/${projectId}/team-members`)
+      .then((response) => setMembers(response.data))
+      .catch((error) => {
+        setSaveStatus(
+          "Could not load team members: " +
+            (error.response?.data?.message || error.message)
+        );
+      });
+
+    axios
+      .get(`/api/projects/${projectId}/risks`)
+      .then((response) => setRisks(response.data))
+      .catch((error) => {
+        setSaveStatus(
+          "Could not load risks: " +
+            (error.response?.data?.message || error.message)
+        );
+      });
+  }, [projectId]);
+
+  async function addMember() {
     if (memberName.trim() === "") return;
-    setMembers([...members, memberName.trim()]);
-    setMemberName("");
+    if (!projectId) {
+      setSaveStatus("Save the project before adding team members.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `/api/projects/${projectId}/team-members`,
+        { name: memberName.trim(), role: null }
+      );
+      setMembers((current) => [...current, response.data]);
+      setMemberName("");
+    } catch (error) {
+      setSaveStatus(
+        "Could not add team member: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
   }
 
-  function deleteMember(index) {
-    setMembers(members.filter((_, i) => i !== index));
+  async function deleteMember(memberId) {
+    try {
+      await axios.delete(
+        `/api/projects/${projectId}/team-members/${memberId}`
+      );
+      setMembers((current) => current.filter((member) => member.id !== memberId));
+    } catch (error) {
+      setSaveStatus(
+        "Could not remove team member: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
   }
 
-  function addRisk() {
+  async function addRisk() {
     if (riskText.trim() === "") return;
-    setRisks([...risks, { text: riskText.trim(), status: riskStatus }]);
-    setRiskText("");
+    if (!projectId) {
+      setSaveStatus("Save the project before adding risks.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `/api/projects/${projectId}/risks`,
+        { description: riskText.trim() }
+      );
+      if (riskStatus !== "OPEN") {
+        const statusResponse = await axios.patch(
+          `/api/projects/${projectId}/risks/${response.data.id}/status`,
+          { status: riskStatus }
+        );
+        setRisks((current) => [...current, statusResponse.data]);
+      } else {
+        setRisks((current) => [...current, response.data]);
+      }
+      setRiskText("");
+    } catch (error) {
+      setSaveStatus(
+        "Could not add risk: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
   }
 
-  // Changes one field of one risk
   function updateRisk(index, field, value) {
     const updated = [...risks];
     updated[index] = { ...updated[index], [field]: value };
     setRisks(updated);
   }
 
-  function deleteRisk(index) {
-    setRisks(risks.filter((_, i) => i !== index));
+  async function saveRiskDescription(risk) {
+    try {
+      await axios.put(
+        `/api/projects/${projectId}/risks/${risk.id}`,
+        { description: risk.description }
+      );
+    } catch (error) {
+      setSaveStatus(
+        "Could not save risk: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
+  }
+
+  async function updateRiskStatus(riskId, status) {
+    try {
+      const response = await axios.patch(
+        `/api/projects/${projectId}/risks/${riskId}/status`,
+        { status }
+      );
+      setRisks((current) =>
+        current.map((risk) => (risk.id === riskId ? response.data : risk))
+      );
+    } catch (error) {
+      setSaveStatus(
+        "Could not update risk status: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
+  }
+
+  async function deleteRisk(riskId) {
+    try {
+      await axios.delete(`/api/projects/${projectId}/risks/${riskId}`);
+      setRisks((current) => current.filter((risk) => risk.id !== riskId));
+    } catch (error) {
+      setSaveStatus(
+        "Could not delete risk: " +
+          (error.response?.data?.message || error.message)
+      );
+    }
   }
 
   async function saveProject() {
@@ -146,10 +258,10 @@ export default function GeneralPage() {
 
         {members.length === 0 && <p className="empty">No team members yet.</p>}
         <ul className="list">
-          {members.map((name, i) => (
-            <li key={i}>
-              {name}
-              <button className="delete-btn" onClick={() => deleteMember(i)}>
+          {members.map((member) => (
+            <li key={member.id}>
+              {member.name}
+              <button className="delete-btn" onClick={() => deleteMember(member.id)}>
                 Remove
               </button>
             </li>
@@ -166,9 +278,9 @@ export default function GeneralPage() {
             onChange={(e) => setRiskText(e.target.value)}
           />
           <select value={riskStatus} onChange={(e) => setRiskStatus(e.target.value)}>
-            <option>Open</option>
-            <option>Monitoring</option>
-            <option>Closed</option>
+            <option value="OPEN">Open</option>
+            <option value="MITIGATED">Monitoring</option>
+            <option value="CLOSED">Closed</option>
           </select>
           <button onClick={addRisk}>Add Risk</button>
         </div>
@@ -186,26 +298,27 @@ export default function GeneralPage() {
             </thead>
             <tbody>
               {risks.map((risk, i) => (
-                <tr key={i}>
+                <tr key={risk.id}>
                   <td>
                     <input
-                      value={risk.text}
-                      onChange={(e) => updateRisk(i, "text", e.target.value)}
+                      value={risk.description}
+                      onChange={(e) => updateRisk(i, "description", e.target.value)}
+                      onBlur={() => saveRiskDescription(risk)}
                     />
                   </td>
                   <td>
                     <select
-                      className={"status status-" + risk.status}
+                      className={"status status-" + risk.status.toLowerCase()}
                       value={risk.status}
-                      onChange={(e) => updateRisk(i, "status", e.target.value)}
+                      onChange={(e) => updateRiskStatus(risk.id, e.target.value)}
                     >
-                      <option>Open</option>
-                      <option>Monitoring</option>
-                      <option>Closed</option>
+                      <option value="OPEN">Open</option>
+                      <option value="MITIGATED">Monitoring</option>
+                      <option value="CLOSED">Closed</option>
                     </select>
                   </td>
                   <td>
-                    <button className="delete-btn" onClick={() => deleteRisk(i)}>
+                    <button className="delete-btn" onClick={() => deleteRisk(risk.id)}>
                       Delete
                     </button>
                   </td>
