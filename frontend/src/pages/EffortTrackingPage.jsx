@@ -22,6 +22,7 @@ export default function EffortTrackingPage() {
   const [entries, setEntries] = useState([]);
 
   // Form fields (FR-7)
+  const [period, setPeriod] = useState("Daily");
   const [date, setDate] = useState("");
   const [requirementId, setRequirementId] = useState(requirements[0].id);
   const [phase, setPhase] = useState(PHASES[0]);
@@ -38,6 +39,11 @@ export default function EffortTrackingPage() {
       setError("Hours must be more than 0.");
       return;
     }
+    const limit = period === "Weekly" ? 168 : 24;
+    if (Number(hours) > limit) {
+      setError(period + " hours can't be more than " + limit + ".");
+      return;
+    }
     setEntries([...entries, { date, requirementId, phase, hours: Number(hours) }]);
     setHours("");
     setError("");
@@ -45,7 +51,8 @@ export default function EffortTrackingPage() {
 
   // Edit or delete hours already logged (FR-8)
   function updateHours(index, newHours) {
-    if (Number(newHours) < 0) return;
+    const limit = entries[index].period === "Weekly" ? 168 : 24;
+    if (Number(newHours) < 0 || Number(newHours) > limit) return;
     const updated = [...entries];
     updated[index] = { ...updated[index], hours: Number(newHours) };
     setEntries(updated);
@@ -91,6 +98,10 @@ export default function EffortTrackingPage() {
       <div className="card">
         <h2>Log Hours</h2>
         <div className="form-row">
+          <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option>Daily</option>
+            <option>Weekly</option>
+          </select>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <select
             value={requirementId}
@@ -163,6 +174,7 @@ export default function EffortTrackingPage() {
             <thead>
               <tr>
                 <th>Date</th>
+                <th>Period</th>
                 <th>Requirement</th>
                 <th>Phase</th>
                 <th>Hours</th>
@@ -173,6 +185,7 @@ export default function EffortTrackingPage() {
               {entries.map((entry, i) => (
                 <tr key={i}>
                   <td>{entry.date}</td>
+                  <td>{entry.period}</td>
                   <td>{entry.requirementId}</td>
                   <td>{entry.phase}</td>
                   <td>

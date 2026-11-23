@@ -227,3 +227,8 @@
 .page tr.total td {
   background: #f3f4f6;
 }
+
+/* index.css colors h2 for dark mode; keep headings dark on the white cards */
+.card h2 {
+  color: inherit;
+}
