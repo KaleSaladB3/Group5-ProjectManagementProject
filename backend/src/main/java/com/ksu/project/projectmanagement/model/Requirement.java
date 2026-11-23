@@ -12,13 +12,16 @@ public class Requirement {
     private Long id;
 
     @Column(nullable = false)
+    private String code;
+
+    @Column(nullable = false)
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false)
-    private String type; // "FUNCTIONAL" or "NON_FUNCTIONAL"
+    private String type;
 
     @ManyToOne
     @JoinColumn(name = "project_id", nullable = false)
