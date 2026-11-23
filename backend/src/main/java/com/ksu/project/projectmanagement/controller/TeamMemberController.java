@@ -21,7 +21,7 @@ public class TeamMemberController {
 
     @GetMapping
     public ResponseEntity<List<TeamMemberResponse>> getTeamMembers(
-            @PathVariable Long projectId
+            @PathVariable("projectId") Long projectId
     ) {
         return ResponseEntity.ok(
                 teamMemberService.getTeamMembers(projectId)
@@ -30,7 +30,7 @@ public class TeamMemberController {
 
     @PostMapping
     public ResponseEntity<TeamMemberResponse> addTeamMember(
-            @PathVariable Long projectId,
+            @PathVariable("projectId") Long projectId,
             @RequestBody TeamMemberRequest request
     ) {
         TeamMemberResponse createdMember =
@@ -43,8 +43,8 @@ public class TeamMemberController {
 
     @DeleteMapping("/{memberId}")
     public ResponseEntity<Void> removeTeamMember(
-            @PathVariable Long projectId,
-            @PathVariable Long memberId
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("memberId") Long memberId
     ) {
         teamMemberService.removeTeamMember(projectId, memberId);
 
